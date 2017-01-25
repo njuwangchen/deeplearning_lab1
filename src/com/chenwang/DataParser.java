@@ -10,7 +10,7 @@ import java.util.Scanner;
 
 public class DataParser {
 
-    public void parseFile(String path) {
+    public Context parseFile(String path) {
         if (path == null || path.length() == 0) {
             System.err.println("Please provide valid file name");
             System.exit(1);
@@ -25,33 +25,38 @@ public class DataParser {
                     "'.");
             System.exit(1);
         }
-
+        Context context = null;
         // Iterate through each line in the file.
         int lineCount = 0;
         while(fileScanner.hasNext()) {
             String line = fileScanner.nextLine().trim();
 
             // Skip blank lines and comments
-            if(line.length() == 0 || line.startsWith("\\\\")) {
+            if(line.length() == 0 || line.startsWith("//")) {
                 continue;
             }
 
             ++lineCount;
 
-            Context context = null;
-
             if(lineCount == 1) {
                 context = new Context(Integer.parseInt(line));
+            } else if (lineCount <= context.numOfFeatures+1) {
+                context.addFeature(line);
+            } else if (lineCount <= context.numOfFeatures+1+2) {
+                context.addLabel(line);
+            } else if (lineCount <= context.numOfFeatures+1+2+1) {
+                context.setNumOfExamples(Integer.parseInt(line));
+            } else {
+                context.addExample(line);
             }
-
-
-
         }
 
+        return context;
     }
 
     public static void main(String[] args) {
         DataParser dp = new DataParser();
-        dp.parseFile("data/red-wine-quality-train.data");
+        Context trainingContext = dp.parseFile("data/red-wine-quality-train.data");
+        System.out.print(trainingContext);
     }
 }
