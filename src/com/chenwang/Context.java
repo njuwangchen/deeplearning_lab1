@@ -4,9 +4,7 @@ package com.chenwang;
  * Created by ClarkWong on 24/1/17.
  */
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 public class Context {
     int numOfFeatures;
@@ -16,14 +14,16 @@ public class Context {
     Example[] examples;
     int exampleCounter;
 
-    Map<String, Map<String, Integer>> featuresMap;
+    // Map<String, Map<String, Integer>> featuresMap;
+    List<Map<String, Integer>> featuresList;
     Map<String, Integer> labelsMap;
 
     public Context(int numOfFeatures) {
         this.numOfFeatures = numOfFeatures;
         this.labelCounter = 0;
 
-        this.featuresMap = new HashMap<String, Map<String, Integer>>();
+        // this.featuresMap = new HashMap<String, Map<String, Integer>>();
+        this.featuresList = new ArrayList<>();
         this.labelsMap = new HashMap<String, Integer>();
     }
 
@@ -31,13 +31,14 @@ public class Context {
         String[] tokens = line.split("\\s+");
         String featureName = tokens[0];
 
-        if (featuresMap.containsKey(featureName)) {
-            System.err.println("Feature Has Already Existed.");
-            return false;
-        }
+//        if (featuresMap.containsKey(featureName)) {
+//            System.err.println("Feature Has Already Existed.");
+//            return false;
+//        }
 
         Map<String, Integer> featureVals = new HashMap<String, Integer>();
-        featuresMap.put(featureName, featureVals);
+        // featuresMap.put(featureName, featureVals);
+        featuresList.add(featureVals);
 
         int featureValLen = tokens.length-2;
         for (int i=0; i<featureValLen; ++i) {
@@ -79,14 +80,14 @@ public class Context {
         ret += numOfFeatures;
         ret += "\n";
 
-        Iterator<Map.Entry<String, Map<String, Integer>>> iter = featuresMap.entrySet().iterator();
+        Iterator<Map<String, Integer>> iter = featuresList.iterator();
         while (iter.hasNext()) {
-            Map.Entry<String, Map<String, Integer>> entry = iter.next();
-            String featureName = entry.getKey();
-            ret += featureName;
-            ret += ": ";
+//            Map.Entry<String, Map<String, Integer>> entry = iter.next();
+//            String featureName = entry.getKey();
+//            ret += featureName;
+//            ret += ": ";
 
-            Map<String, Integer> featureVals = entry.getValue();
+            Map<String, Integer> featureVals = iter.next();
             Iterator<Map.Entry<String, Integer>> valIter = featureVals.entrySet().iterator();
             while (valIter.hasNext()) {
                 Map.Entry<String, Integer> valEntry = valIter.next();
