@@ -61,6 +61,15 @@ public class DataParser {
         Context testingContext = dp.parseFile("data/red-wine-quality-test.data");
 
         PerceptronLearning perceptronLearning = new PerceptronLearning(trainingContext, tuningContext, testingContext, 0, 0.01);
-        perceptronLearning.learnOneEpoch();
+        perceptronLearning.startTraining();
+
+        System.out.println();
+
+        Context trainingContext2 = dp.parseFile("data/Thoracic_Surgery_Data_train.data");
+        Context tuningContext2 = dp.parseFile("data/Thoracic_Surgery_Data_tune.data");
+        Context testingContext2 = dp.parseFile("data/Thoracic_Surgery_Data_test.data");
+
+        PerceptronLearning perceptronLearning2 = new PerceptronLearning(trainingContext2, tuningContext2, testingContext2, 0, 0.01);
+        perceptronLearning2.startTraining();
     }
 }
