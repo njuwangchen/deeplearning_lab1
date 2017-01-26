@@ -57,6 +57,10 @@ public class DataParser {
     public static void main(String[] args) {
         DataParser dp = new DataParser();
         Context trainingContext = dp.parseFile("data/red-wine-quality-train.data");
-        System.out.print(trainingContext);
+        Context tuningContext = dp.parseFile("data/red-wine-quality-tune.data");
+        Context testingContext = dp.parseFile("data/red-wine-quality-test.data");
+
+        PerceptronLearning perceptronLearning = new PerceptronLearning(trainingContext, tuningContext, testingContext, 0, 0.01);
+        perceptronLearning.learnOneEpoch();
     }
 }

@@ -1,5 +1,6 @@
 package com.chenwang;
 
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -40,7 +41,21 @@ public class PerceptronLearning {
         String[] strFeatures = example.features;
         int[] features = new int[numOfWeights];
         for (int i=0; i<numOfWeights; ++i) {
+            Map<String, Integer> map = trainingSet.featuresList.get(i);
+            Integer featureVal = map.get(strFeatures[i]);
+            features[i] = featureVal;
+        }
 
+        // print out the features array
+        for (int i=0; i<numOfWeights; ++i) {
+            System.out.print(features[i]+" ");
+        }
+        System.out.println();
+    }
+
+    public void learnOneEpoch() {
+        for (int i=0; i<trainingSet.numOfExamples; ++i) {
+            learnOneExample(trainingSet.examples[i]);
         }
     }
 }
