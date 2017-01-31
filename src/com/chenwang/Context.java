@@ -23,7 +23,7 @@ public class Context {
         this.labelCounter = 0;
 
         // this.featuresMap = new HashMap<String, Map<String, Integer>>();
-        this.featuresList = new ArrayList<>();
+        this.featuresList = new ArrayList<Map<String, Integer>>();
         this.labelsMap = new HashMap<String, Integer>();
     }
 
