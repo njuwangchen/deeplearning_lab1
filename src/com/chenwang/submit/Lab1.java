@@ -9,22 +9,24 @@ import java.io.*;
 
 public class Lab1 {
     public static void main(String[] args) {
+
+        if (args.length != 3) {
+            System.err.println("Usage: Lab1 fileNameOfTrain fileNameOfTune fileNameOfTest");
+            System.exit(0);
+        }
+
+        String fileNameOfTrain = args[0];
+        String fileNameOfTune = args[1];
+        String fileNameOfTest = args[2];
+
         DataParser dp = new DataParser();
-        Context trainingContext = dp.parseFile("data/red-wine-quality-train.data");
-        Context tuningContext = dp.parseFile("data/red-wine-quality-tune.data");
-        Context testingContext = dp.parseFile("data/red-wine-quality-test.data");
+        Context trainingContext = dp.parseFile(fileNameOfTrain);
+        Context tuningContext = dp.parseFile(fileNameOfTune);
+        Context testingContext = dp.parseFile(fileNameOfTest);
 
-        PerceptronLearning perceptronLearning = new PerceptronLearning(trainingContext, tuningContext, testingContext, 0, 0.01);
-        perceptronLearning.startTraining();
-
-        System.out.println();
-
-        Context trainingContext2 = dp.parseFile("data/Thoracic_Surgery_Data_train.data");
-        Context tuningContext2 = dp.parseFile("data/Thoracic_Surgery_Data_tune.data");
-        Context testingContext2 = dp.parseFile("data/Thoracic_Surgery_Data_test.data");
-
-        PerceptronLearning perceptronLearning2 = new PerceptronLearning(trainingContext2, tuningContext2, testingContext2, 0, 0.01);
-        perceptronLearning2.startTraining();
+        PerceptronLearning perceptronLearning = new PerceptronLearning(trainingContext, tuningContext, testingContext, 1,0, 0.01);
+//        perceptronLearning.startTraining();
+        perceptronLearning.startTrainingWithEarlyStopping(30);
     }
 }
 
@@ -39,6 +41,7 @@ class Context {
     // Map<String, Map<String, Integer>> featuresMap;
     List<Map<String, Integer>> featuresList;
     Map<String, Integer> labelsMap;
+    Map<Integer, String> inversedLabelsMap;
 
     public Context(int numOfFeatures) {
         this.numOfFeatures = numOfFeatures;
@@ -47,6 +50,7 @@ class Context {
         // this.featuresMap = new HashMap<String, Map<String, Integer>>();
         this.featuresList = new ArrayList<Map<String, Integer>>();
         this.labelsMap = new HashMap<String, Integer>();
+        this.inversedLabelsMap = new HashMap<Integer, String>();
     }
 
     public boolean addFeature(String line) {
@@ -77,6 +81,7 @@ class Context {
         }
 
         labelsMap.put(label, labelCounter);
+        inversedLabelsMap.put(labelCounter, label);
         ++labelCounter;
 
         return true;
@@ -228,37 +233,48 @@ class Example {
 }
 
 class PerceptronLearning {
+
     Context trainingSet;
     Context tuningSet;
     Context testingSet;
 
     int numOfWeights;
-    double[] weights;
 
-    double bias;
+    int numOfEnsemble;
+
+    double[][] weights;
+
+    double[] bias;
 
     double threshold;
 
     double learningRate;
 
     public PerceptronLearning(Context trainingSet, Context tuningSet, Context testingSet,
-                              double threshold, double learningRate) {
+                              int numOfEnsemble, double threshold, double learningRate) {
         this.trainingSet = trainingSet;
         this.tuningSet = tuningSet;
         this.testingSet = testingSet;
 
-        numOfWeights = trainingSet.numOfFeatures;
-        weights = new double[numOfWeights];
+        this.numOfEnsemble = numOfEnsemble;
+        this.numOfWeights = trainingSet.numOfFeatures;
 
-        for (int i=0; i<numOfWeights; ++i) {
-//            weights[i] = new Random().nextDouble();
-            weights[i] = 1.0;
+        weights = new double[this.numOfEnsemble][this.numOfWeights];
+
+        for (int i=0; i < this.numOfEnsemble; ++i) {
+            for (int j = 0; j < this.numOfWeights; ++j) {
+                weights[i][j] = new Random().nextDouble();
+//                weights[i][j] = 1.0;
+            }
         }
 
         this.threshold = threshold;
         this.learningRate = learningRate;
 
-        this.bias = 1.0;
+        this.bias = new double[this.numOfEnsemble];
+        for (int i=0; i < this.numOfEnsemble; ++i) {
+            bias[i] = 1.0;
+        }
     }
 
     private int[] transformFeature(String[] strFeatures) {
@@ -271,7 +287,7 @@ class PerceptronLearning {
         return features;
     }
 
-    private boolean learnOneExample(Example example) {
+    private void learnOneExample(Example example) {
         String[] strFeatures = example.features;
         int[] features = transformFeature(strFeatures);
 
@@ -281,37 +297,30 @@ class PerceptronLearning {
 //        }
 //        System.out.println();
 
-        double weightedSum = 0;
-        // calculate the summed weights
-        for (int i=0; i<numOfWeights; ++i) {
-            weightedSum += features[i] * weights[i];
-        }
-        weightedSum += bias;
-
-        int output = 0;
-        if (weightedSum > threshold) {
-            output = 1;
-        }
-
-        // adjust the weights
         int teacher = trainingSet.labelsMap.get(example.label);
 
-        if (teacher == output) return true;
-
-        if (teacher != output) {
-            for (int i=0; i<numOfWeights; ++i) {
-                weights[i] += learningRate*features[i]*(teacher-output);
+        // calculate the summed weights
+        for (int i=0; i<numOfEnsemble; ++i) {
+            double weightedSum = 0;
+            for (int j=0; j<numOfWeights; ++j) {
+                weightedSum += features[j] * weights[i][j];
             }
-            bias += learningRate*(teacher-output);
+            weightedSum += bias[i];
+
+            int output = 0;
+            if (weightedSum > threshold) {
+                output = 1;
+            }
+
+            if (teacher == output) return;
+
+            else {
+                for (int j=0; j<numOfWeights; ++j) {
+                    weights[i][j] += learningRate*features[j]*(teacher-output);
+                }
+                bias[i] += learningRate*(teacher-output);
+            }
         }
-
-//        // print out the new weights
-//        for (int i=0; i<numOfWeights; ++i) {
-//            System.out.print(weights[i]+" ");
-//        }
-//        System.out.println();
-
-        return false;
     }
 
     private boolean testOneExample(Example example) {
@@ -319,33 +328,36 @@ class PerceptronLearning {
         String[] strFeatures = example.features;
         int[] features = transformFeature(strFeatures);
 
-        double weightedSum = 0;
-        // calculate the summed weights
-        for (int i=0; i<numOfWeights; ++i) {
-            weightedSum += features[i] * weights[i];
+        int voteCount = 0;
+
+        for (int i = 0; i < numOfEnsemble; ++i) {
+            double weightedSum = 0;
+            for (int j = 0; j < numOfWeights; ++j) {
+                weightedSum += features[j] * weights[i][j];
+            }
+            weightedSum += bias[i];
+            if (weightedSum > threshold) {
+                ++voteCount;
+            }
         }
-        weightedSum += bias;
 
         int output = 0;
-        if (weightedSum > threshold) {
+        if (voteCount > numOfEnsemble/2) {
             output = 1;
         }
 
-        int teacher = trainingSet.labelsMap.get(example.label);
+        String predictedLabel = testingSet.inversedLabelsMap.get(output);
+        System.out.println(predictedLabel);
 
+        int teacher = trainingSet.labelsMap.get(example.label);
         return teacher == output;
     }
 
     public void learnOneEpoch() {
-        int count = 0;
 
         for (int i=0; i<trainingSet.numOfExamples; ++i) {
-            if (!learnOneExample(trainingSet.examples[i])) {
-                ++count;
-            }
+            learnOneExample(trainingSet.examples[i]);
         }
-
-        System.out.println("Training Set Error Rate: " + (double)count/trainingSet.numOfExamples);
     }
 
     private double testAndGetErrorRate(Example[] examples) {
@@ -359,33 +371,56 @@ class PerceptronLearning {
     }
 
     public double getTuningSetErrorRate() {
+        System.out.println("Tuning Starts...");
         double tuningSetErrorRate = testAndGetErrorRate(tuningSet.examples);
-        System.out.println("Tuning Set Error Rate is: "+tuningSetErrorRate);
+//        System.out.println("Tuning Set Error Rate is: "+tuningSetErrorRate);
+        System.out.println("Tuning Set Accuracy is:" + (1-tuningSetErrorRate));
+        System.out.println();
         return tuningSetErrorRate;
     }
 
     public double getTestingSetErrorRate() {
+        System.out.println("Testing Starts...");
         double testingSetErrorRate = testAndGetErrorRate(testingSet.examples);
-        System.out.println("Testing Set Error Rate is: "+testingSetErrorRate);
+//        System.out.println("Testing Set Error Rate is: "+testingSetErrorRate);
+        System.out.println("Testing Set Accuracy is:" + (1-testingSetErrorRate));
+        System.out.println();
         return testingSetErrorRate;
     }
 
-    public void startTraining() {
-        double lastErrorRate = 1.0;
-        double[] lastEpochWeights;
-        double lastEpochBias;
+    public void startTrainingWithEarlyStopping(int stepLimit) {
+        double lowestErrorRate = 1.0;
+        double[][] lowestEpochWeights = new double[numOfEnsemble][numOfWeights];
+        double[] lowestEpochBias = new double[numOfEnsemble];
+
+        int countOfStep = 0;
+
         while (true) {
-            lastEpochWeights = Arrays.copyOf(this.weights, numOfWeights);
-            lastEpochBias = this.bias;
+            if (countOfStep > stepLimit)
+                break;
             learnOneEpoch();
             double thisTimeErrorRate = getTuningSetErrorRate();
-            if (thisTimeErrorRate > lastErrorRate) {
-                this.weights = lastEpochWeights;
-                this.bias = lastEpochBias;
-                getTestingSetErrorRate();
-                break;
+            if (thisTimeErrorRate < lowestErrorRate) {
+                for (int i = 0; i < numOfEnsemble; ++i) {
+                    lowestEpochWeights[i] = Arrays.copyOf(this.weights[i], numOfWeights);
+                }
+                lowestEpochBias = Arrays.copyOf(this.bias, numOfEnsemble);
+                lowestErrorRate = thisTimeErrorRate;
+                countOfStep = 0;
+            } else {
+                ++countOfStep;
             }
-            lastErrorRate = thisTimeErrorRate;
+        }
+
+        this.weights = lowestEpochWeights;
+        this.bias = lowestEpochBias;
+        getTestingSetErrorRate();
+    }
+
+    public void startTraining() {
+        for (int i=0; i<100; ++i) {
+            learnOneEpoch();
+            getTuningSetErrorRate();
             getTestingSetErrorRate();
         }
     }
